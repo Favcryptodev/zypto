@@ -1,0 +1,19 @@
+{
+  "testCount": 13,
+  "passed": [
+    "Explicit WETH deposit unwraps through WETH9 2300-gas transfer, accounts once and burns",
+    "Direct WETH transfer does not trigger; stranger process sweeps and repeated process is idempotent",
+    "Mixed native ETH and directly transferred WETH are accounted once at native receipt",
+    "Failed unwrap leaves wrapped balance intact and does not block native marketing",
+    "Malformed short unwrap rolls back token debit and ETH receipt atomically",
+    "Rejected marketing and failed swap queue independently after WETH receipt",
+    "WETH transferFrom/withdraw reentrancy cannot recursively process",
+    "No allowance, false transferFrom, zero deposit, external unwrap and nonowner controls fail",
+    "Gas-exhausting unwrap is isolated from native ETH marketing",
+    "Non-WETH callback during unwrap is rejected without double-accounting",
+    "Dust stays exactly accounted and follows existing rounding rule",
+    "Owner floor and paused burns apply identically to WETH receipts",
+    "Owner can emergency recover queued WETH only when paused"
+  ],
+  "scope": "Local EVM, WETH9-style stipend callback plus adversarial mock modes; no mainnet transactions"
+}

@@ -1,33 +1,25 @@
-# Receiver review — 2026-11-02
+# WETH ingestion update review — 2026-11-02
 
-Original recovered Solidity is unchanged. This is a scoped code review and local test run, not an independent security audit or deployment approval.
+**UNDEPLOYED.** The original receiver was native-ETH-only. This update adds WETH ingestion without changing the fixed 75/25 split or immutable token/router/marketing configuration. The original recovery commit preserves prior source and historical evidence. This is a scoped code review and local test run, not an independent security audit.
 
-## Main requirement gap: WETH is not processed
+## Receipt paths
 
-`contracts/ZyptoFeeReceiver.sol:97-104` accounts only native ETH through `receive()`. Ordinary WETH ERC20 transfers do not execute that callback. There is no WETH deposit, unwrap, or balance-sweep entrypoint. `process()` (108) retries only existing native-ETH accounting; `weth` is used as the swap path (147-149), not as received funds. Direct WETH remains recoverable only by the owner through paused `emergencyWithdrawToken` (226-233); it is not automatically split or burned. The added `test/weth-gap-review.mjs` demonstrates this with an ordinary ERC20 at the configured wrapped-asset address, not a live WETH fork.
+- Native ETH: account once and attempt wrapped-balance sweep, marketing payout, then buy-and-burn.
+- Explicit WETH: `approve` followed by `depositWETHAndProcess(amount)` pulls only caller funds, verifies the received amount, and attempts unwrapping/processing.
+- Direct WETH transfer: does not call this contract. Anyone can call `process()` afterward; a later ETH receipt can also sweep. A keeper/caller is required if no further transaction occurs. No automation service is included.
 
-If WETH support is required, design and test an explicit deposit/unwrap or permissionless sweep mechanism separately. An ordinary ERC20 transfer cannot itself notify this receiver. Do not activate this original contract expecting automatic WETH processing.
+`unwrapWETH()` is self-only while the processing lock is held. Its bounded external-call frame isolates unwrap failure from existing ETH payout. A warmed unwrap guard plus trusted WETH sender identifies the stipend-limited callback, which returns without accounting. The outer frame checks exact native balance increase and zero residual WETH before allocating once. Failed/short unwrap rolls the isolated frame back; funds remain wrapped and retryable. Reentry into deposit/process is rejected.
 
-## Confirmed native-ETH behavior
+## Preserved constraints
 
-- Allocation is fixed: marketing gets `floor(msg.value * 3 / 4)`; burn gets the remainder (97-101). This is approximately 75/25, with rounding dust going to burn. It is not a configurable small percentage.
-- Every ordinary ETH receipt attempts marketing first, then one buyback if the threshold, pause, gas and fee-exemption conditions allow (111-168). Below threshold or on failure, funds remain queued. `process()` and `releaseMarketing()` are permissionless retries, not timers. A later receipt is required for another automatic attempt; ordinary low-gas sends can queue, and arbitrary insufficient gas can still revert receipt. Forced ETH is not accounted as a donation.
-- Marketing destination is immutable and copied from ZYPTO at construction (77-85), not dynamically followed. Owner is copied from the live token owner, never deployer; later ownership changes require this receiver's two-step transfer (190-200).
-- Buybacks purchase ZYPTO into the receiver and transfer measured tokens to `0x...dEaD` (156-165). This is dead-address removal from circulation, not a reduction of token `totalSupply()`.
-- Self-call failure isolation preserves prior successful marketing payment. Marketing has a 40,000-gas cap; buyback is capped at 650,000 gas with reserve. Reverts queue funds instead of changing their destination. Reentrant receipts are accounted, while nested processing is blocked (68-69, 97-115, 140-141).
-- Minimum output is the greater of the spot router quote less slippage and the owner's fixed tokens-per-ETH floor (150-154). Initial slippage is 3%, owner limit 10%. This is not a TWAP/oracle or sandwich-proof mechanism; the owner must maintain the fixed floor. Stale or loose floors permit adverse execution, overly strict floors defer burning.
-- Owner can pause burns and withdraw even allocated ETH while paused (205-223), or recover ERC20s (226-233). Thus this is administratively recoverable, not an irrevocable burn guarantee. Public callers cannot choose a payout target or execute the buyback self-call directly.
+75% rounded down goes to marketing; the remainder goes to the burn budget. Marketing is attempted first. Failed marketing stays queued, while buyback failures independently roll back. Buybacks remain threshold/cap/gas/fee-exemption/pause dependent. The minimum is the larger of a spot quote less owner-bounded slippage and an owner-maintained fixed output floor; this is not a TWAP or sandwich-proof design. A stale floor can permit unfavorable execution or defer burns.
 
-## Historical settings and activation cautions
+Burns transfer measured bought tokens to the dead address; token totalSupply is not reduced. Initial ownership is copied from ZYPTO rather than deployer; later ownership requires two steps. The marketing wallet is an immutable deployment-time snapshot. Owner emergency recovery while paused includes pending ETH and WETH, so funds are administratively recoverable rather than an irrevocable burn guarantee.
 
-Original README records a tested configuration of 0.1% liquidity and 3.9% receiver, whose 75/25 split gives 2.925% marketing and 0.975% buy-and-burn budget. Do not restore the superseded zero-liquidity setting; the token's upstream payout can revert. The receiver must be deployed, verified and fee-exempt before activation. Bundled unsigned deployment calldata and price floor are historical examples and must be refreshed/reviewed, not blindly broadcast. No live owner, balances, settings, or deployment status were re-queried in this review.
+## Verification and deployment limits
 
-## Verification
+The final source compiles with Solidity 0.8.24 to an 8,731-byte runtime. All 21 original native-ETH local tests passed; the dedicated WETH suite additionally covers the new receipt paths. The WETH mock uses canonical WETH9-style 2,300-gas transfer and additionally tests reverting/short unwrap, failed transferFrom and reentry. Historical fork reports are retained and cover the original implementation. A fresh local Ethereum fork at block 26,328,635 also passed: six actual ZYPTO sells with LP minting, marketing and automatic burns; canonical WETH explicit deposit and real-router burn; direct canonical WETH transfer followed by permissionless processing and idempotent retry; and a deliberate burn failure that preserved marketing and the sell. See `artifacts/weth-fork-results.json` and `test/fork-weth.mjs`. These controlled tests lower thresholds and clear fee balances on the local fork; they are not a guarantee for all market states. No real transactions, deployment, receiver activation or keeper setup occurred.
 
-- `npm ci --ignore-scripts --no-audit --no-fund` installed pinned dependencies.
-- `npm run build` passed with Solidity 0.8.24; runtime size 7,062 bytes.
-- `npm test` passed all 21 original local EVM tests, including reverted/gas-exhausting swaps, rejected marketing, reentrancy, output limits, exemption, emergency accounting and ownership.
-- Mainnet-fork reports are original historical artifacts; fork tests were not rerun during this review. No mainnet transactions or deployment were submitted.
-- Rebuilt artifacts and original test report matched the recovered archive byte-for-byte. No original project file was altered. Dependency directories, private hosting identity, credentials and recovery identifiers are excluded from publication.
+The old deployment plan is explicitly invalidated. Fresh preparation and review are required before separately authorized deployment. Regenerated ABI/bytecode/standard input correspond to the updated source. Dependencies are pinned; installed vendor directories and credentials are not published.
 
-Run the additional receipt-gap regression with `node test/weth-gap-review.mjs` from this directory.
+Independent second-agent source review found no remaining blocker for canonical WETH9. The unwrap callback rejects unexpected senders while the unwrap guard is active.

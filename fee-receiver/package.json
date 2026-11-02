@@ -8,7 +8,9 @@
     "test": "node test/receiver.mjs",
     "test:fork": "node test/fork.mjs",
     "prepare:deployment": "node scripts/prepare-deployment.mjs",
-    "test:fork:revised": "node test/fork-revised.mjs"
+    "test:fork:revised": "node test/fork-revised.mjs",
+    "test:weth": "node test/weth.mjs",
+    "test:fork:weth": "node test/fork-weth.mjs"
   },
   "devDependencies": {
     "solc": "0.8.24",

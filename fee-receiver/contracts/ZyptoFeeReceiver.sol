@@ -10,6 +10,11 @@ interface IZypto {
     function transfer(address,uint256) external returns(bool);
     function _isExcludedFromFees(address) external view returns(bool);
 }
+interface IWrappedETH {
+    function balanceOf(address) external view returns (uint256);
+    function transferFrom(address,address,uint256) external returns (bool);
+    function withdraw(uint256) external;
+}
 interface IBuyRouter {
     function WETH() external view returns (address);
     function getAmountsOut(uint256,address[] calldata) external view returns(uint256[] memory);
@@ -24,6 +29,7 @@ abstract contract FeeReceiverCore {
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
     uint256 public constant MARKETING_GAS = 40_000;
     uint256 public constant BUYBACK_GAS = 650_000;
+    uint256 public constant WETH_GAS = 200_000;
     uint256 private constant GAS_RESERVE = 70_000;
     IZypto public immutable token;
     IBuyRouter public immutable router;
@@ -43,6 +49,7 @@ abstract contract FeeReceiverCore {
     uint256 public totalTokensSentToDead;
     bool public buybacksPaused;
     uint256 private entered = 1;
+    bool private unwrapping;
 
     error Unauthorized();
     error InvalidAddress();
@@ -55,6 +62,9 @@ abstract contract FeeReceiverCore {
     error InsufficientOutput();
     event Received(address indexed sender, uint256 eth, uint256 marketing, uint256 buyback);
     event MarketingPaid(address indexed recipient, uint256 eth);
+    event WETHDeposited(address indexed sender, uint256 amount);
+    event WETHUnwrapped(uint256 amount);
+    event WETHDeferred();
     event BuybackBurned(uint256 eth, uint256 tokens);
     event BurnThresholdChanged(uint256 oldThreshold, uint256 newThreshold);
     event BuybackLimitsChanged(uint256 maxETH, uint256 minTokensPerETH, uint256 slippageBps);
@@ -95,25 +105,71 @@ abstract contract FeeReceiverCore {
     /// @dev Accounting precedes attempts; failures retain allocations. This uses call(), not send()/transfer().
     ///      Reentrant receipts are accounted but do not recursively process.
     receive() external payable {
-        uint256 marketing = msg.value * 3 / 4;
-        uint256 buyback = msg.value - marketing;
-        marketingPending += marketing;
-        burnPending += buyback;
-        totalReceived += msg.value;
-        emit Received(msg.sender, msg.value, marketing, buyback);
+        // Canonical WETH9 withdraw uses transfer's 2,300-gas stipend. Do not write
+        // storage here: the guarded unwrap frame accounts this ETH exactly once.
+        if (unwrapping) {
+            if (msg.sender != weth) revert Unauthorized();
+            return;
+        }
+        _accountETH(msg.sender, msg.value);
         if (entered == 1) _process();
     }
 
-    /// @notice Permissionless retry, also useful if a receiving transaction had too little gas.
-    function process() external nonReentrant { _attemptMarketing(); _attemptBuyback(); }
+    function _accountETH(address sender, uint256 amount) private {
+        uint256 marketing = amount * 3 / 4;
+        uint256 buyback = amount - marketing;
+        marketingPending += marketing;
+        burnPending += buyback;
+        totalReceived += amount;
+        emit Received(sender, amount, marketing, buyback);
+    }
+
+    /// @notice Approve this receiver on WETH, then deposit and attempt processing.
+    /// @dev Only pulls caller funds. A failed unwrap leaves WETH queued for process().
+    function depositWETHAndProcess(uint256 amount) external nonReentrant {
+        if (amount == 0) revert InvalidAmount();
+        uint256 beforeBalance = IWrappedETH(weth).balanceOf(address(this));
+        if (!IWrappedETH(weth).transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
+        if (IWrappedETH(weth).balanceOf(address(this)) - beforeBalance != amount) revert InvalidAmount();
+        emit WETHDeposited(msg.sender, amount);
+        _attemptWETH();
+        _attemptMarketing();
+        _attemptBuyback();
+    }
+
+    /// @notice Permissionless sweep of direct WETH transfers and retry of queued ETH.
+    /// @dev Ordinary ERC20 transfers cannot trigger this; a caller/keeper must call it.
+    function process() external nonReentrant { _attemptWETH(); _attemptMarketing(); _attemptBuyback(); }
     function releaseMarketing() external nonReentrant { _attemptMarketing(); }
 
     function _process() private {
         entered = 2;
+        _attemptWETH();
         _attemptMarketing(); // Marketing is always tried before the burn; burns cannot undo it.
         _attemptBuyback();
         entered = 1;
     }
+
+    function _attemptWETH() private {
+        if (gasleft() < WETH_GAS + GAS_RESERVE) return;
+        try this.unwrapWETH{gas: WETH_GAS}() {} catch { emit WETHDeferred(); }
+    }
+
+    /// @dev Self-only boundary prevents an unwrap failure blocking queued ETH payout.
+    function unwrapWETH() external {
+        if (msg.sender != address(this) || entered != 2) revert Unauthorized();
+        uint256 amount = IWrappedETH(weth).balanceOf(address(this));
+        if (amount == 0) return;
+        uint256 beforeETH = address(this).balance;
+        unwrapping = true; // Warm this slot before WETH9's stipend-limited callback.
+        IWrappedETH(weth).withdraw(amount);
+        unwrapping = false;
+        if (address(this).balance - beforeETH != amount
+            || IWrappedETH(weth).balanceOf(address(this)) != 0) revert InvalidAmount();
+        _accountETH(weth, amount);
+        emit WETHUnwrapped(amount);
+    }
+
     function _attemptMarketing() private {
         uint256 amount = marketingPending;
         if (amount == 0 || gasleft() < MARKETING_GAS + GAS_RESERVE) return;

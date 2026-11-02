@@ -1,10 +1,10 @@
 # ZYPTO automatic fee receiver
 
-**Status: implemented and compiled; not deployed. Revised configuration: 0.1% LP and 3.9% to the 75/25 receiver.**
+**Status: WETH ingestion added; UNDEPLOYED. Configuration remains 0.1% LP and 3.9% to the fixed 75/25 receiver.**
 
 ## Requested behavior
 
-For ETH sent to this receiver:
+For native ETH sent to this receiver, and WETH after unwrapping:
 
 - 75% is allocated to the marketing wallet that ZYPTO reports at deployment.
 - 25% is allocated to buying ZYPTO and sending it to `0x000000000000000000000000000000000000dEaD`.
@@ -92,7 +92,7 @@ npm run prepare:deployment -- 0.01
 `ETH_RPC_URL` optionally selects an Ethereum mainnet RPC. The fork tests do not send mainnet transactions. The revised test clears the token fee balance and pending marketing allocation before each test sell, lowers the token swap threshold to exercise payout on each sell, and uses a 0.00001 ETH burn threshold. These are local test-only changes, not live configuration changes. The historical fork test adjusts one local token slot for the isolated zero-liquidity case. The package's test source `test/VerifiedZypto.sol` is the verified source fetched from Etherscan for analysis.
 
 - 21 local EVM tests cover ownership, split accounting, threshold triggering, actual token movement in mocks, reverted swaps, gas exhaustion, rejected marketing payments, retries, reentrancy, output limits, missing exemption, pause, emergency recovery, forced ETH, spend caps, low-gas receipts and ownership transfer.
-- The revised mainnet-fork test passed six clean-fee sell cycles using 10/390. Each minted LP, paid marketing and executed an automatic burn through the real ZYPTO/Uniswap contracts. A seventh sell deliberately disabled receiver exemption: the burn deferred, while the sell and marketing payment succeeded. The historical fork report preserves the earlier zero-liquidity failure for comparison.
+- Historical pre-WETH evidence: the revised mainnet-fork test passed six clean-fee sell cycles using 10/390. Each minted LP, paid marketing and executed an automatic burn through the real ZYPTO/Uniswap contracts. A seventh sell deliberately disabled receiver exemption: the burn deferred, while the sell and marketing payment succeeded. The historical fork report preserves the earlier zero-liquidity failure for comparison.
 - See `artifacts/revised-fork-results.json` for the revised integration results, `artifacts/test-results.json` for the existing local receiver tests, and `artifacts/fork-results.json` for the historical zero-liquidity test. Any receiver address in fork results exists only on that local fork.
 
 These are implementation tests, not an independent security audit.
@@ -101,7 +101,7 @@ These are implementation tests, not an independent security audit.
 
 The preparation script writes `artifacts/deployment-plan.json` with unsigned creation calldata, constructor arguments, expected owner and expected marketing wallet. It never loads a private key or broadcasts. Its suggested floor is 90% of a current quote for the maximum buyback size; review the floor and refresh it near deployment.
 
-Deploy **ZyptoFeeReceiver**, not the abstract testing core, using Solidity 0.8.24, optimizer 200 runs, EVM `paris`. The wrapper only deploys on chain ID 1. The source and standard JSON input are included for explorer verification. After deployment, compare all immutable addresses and owner against the reviewed plan before any owner activation transaction. Do not use the pre-generated calldata indefinitely: it contains a time-sensitive suggested output floor.
+Deploy **ZyptoFeeReceiver**, not the abstract testing core, using Solidity 0.8.24, optimizer 200 runs, EVM `paris`. The wrapper only deploys on chain ID 1. The source and standard JSON input are included for explorer verification. After deployment, compare all immutable addresses and owner against the reviewed plan before any owner activation transaction. No current calldata is bundled: the pre-WETH plan is invalidated. Generate and review a fresh plan; its suggested output floor is time-sensitive.
 
 ## Owner activation sequence
 
@@ -111,3 +111,18 @@ Deploy **ZyptoFeeReceiver**, not the abstract testing core, using Solidity 0.8.2
 4. The ZYPTO owner calls `setMarketingWallet(receiverAddress)` on ZYPTO.
 
 The updated tax console uses 10/390 and blocks switching to an undeployed or non-exempt receiver. The owner can perform exemption through ZYPTO's Etherscan write-contract page. The receiver contract remains undeployed; no real token settings, exemptions or transfers were submitted in this task.
+
+## WETH ingestion update (2026-11-02; UNDEPLOYED)
+
+The fixed 75% marketing / 25% buy-and-burn allocation and existing owner controls are unchanged.
+
+- For an explicit WETH payment, approve the receiver on WETH, then call `depositWETHAndProcess(amount)`. Only the caller's approved balance is pulled. This call attempts unwrapping and the usual marketing-first processing immediately.
+- Ordinary `WETH.transfer(receiver, amount)` cannot invoke the receiver. Anyone may subsequently call `process()` to sweep the receiver's direct WETH balance, unwrap and process it. A later native ETH receipt also attempts the sweep when gas is sufficient. **A caller/keeper is needed if no later transaction occurs; the contract cannot wake itself up.** No keeper is deployed or configured here.
+- Unwrapping is best-effort in an isolated self-call. A failed unwrap leaves WETH queued without blocking existing native ETH marketing payments. Deposit failure before WETH is accepted (including inadequate allowance or a failed transfer) reverts atomically. Monitor `WETHDeferred`, balances and pending allocations rather than assuming each successful deposit also completed a burn.
+- The guarded WETH callback returns without storage writes or events, supporting canonical WETH9's 2,300-gas `transfer`. The outer frame verifies exact ETH proceeds and wrapped-token debit, then accounts once. It never combines accounting from the callback and the outer frame.
+- Permissionless callers cannot select the marketing or burn destination. WETH remains owner-recoverable through paused emergency token withdrawal, like other ERC20 assets.
+- Underlying original native ETH rules still apply: thresholds, max spend, price floor, pause, fee exemption, gas and swap failures can defer burns. Marketing recipient receives native ETH, not WETH.
+
+Canonical WETH9 reference: https://github.com/gnosis/canonical-weth/blob/master/contracts/WETH9.sol (withdraw uses ETH transfer; ERC20 transfer does not notify the recipient).
+
+Run `npm run build`, `npm test`, and `npm run test:weth` (34 local cases passed). Run `npm run test:fork:weth` for the fresh canonical-WETH/mainnet-fork integration suite. It passed at block 26,328,635; see `artifacts/weth-fork-results.json`. Historical fork reports cover the pre-WETH version only. The old unsigned deployment calldata has been invalidated in `artifacts/deployment-plan.json`. Run the read-only preparation script against freshly built artifacts and review constructor values before any separately authorized deployment.

@@ -1,0 +1,73 @@
+{
+  "testedAt": "2026-11-02T17:37:59.174Z",
+  "forkBlock": 26328635,
+  "owner": "0x86A0985acba4eC2BE144ee23b0147633bE6C0F59",
+  "marketing": "0x7fFa6CBe2516B0c15966f0DA27261ffd0d9a8651",
+  "settings": {
+    "sellLiquidityBps": 10,
+    "sellReceiverBps": 390,
+    "receiverMarketingPercent": 75,
+    "receiverBurnPercent": 25
+  },
+  "effectivePercent": {
+    "liquidity": 0.1,
+    "marketing": 2.925,
+    "buybackBurn": 0.975
+  },
+  "cycles": [
+    {
+      "cycle": 1,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    },
+    {
+      "cycle": 2,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    },
+    {
+      "cycle": 3,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    },
+    {
+      "cycle": 4,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    },
+    {
+      "cycle": 5,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    },
+    {
+      "cycle": 6,
+      "sellSucceeded": true,
+      "liquidityMinted": true,
+      "marketingPaid": true,
+      "automaticBurn": true
+    }
+  ],
+  "failedBurnStillPaidMarketingAndCompletedSell": true,
+  "originalTokenSwapThreshold": "20000000000000000000000",
+  "testTokenSwapThreshold": "1919144653759894935706",
+  "testBurnThreshold": "10000000000000",
+  "scope": "Local Ethereum fork. Token fee balance/pending fees cleared before each test sell; token swap threshold lowered to exercise six successive payout cycles. Real ZYPTO, Uniswap router and LP pair used. No mainnet writes.",
+  "canonicalWETH": {
+    "explicitDeposit": true,
+    "directTransferRequiresProcess": true,
+    "permissionlessSweep": true,
+    "idempotentRetry": true,
+    "realRouterBurns": true
+  }
+}
