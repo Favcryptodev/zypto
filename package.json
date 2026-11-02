@@ -1,0 +1,13 @@
+{
+  "name": "zypto-tax-console",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare:vendor": "node scripts/prepare-vendor.mjs",
+    "test": "node scripts/prepare-vendor.mjs && node test/transactions.mjs",
+    "check": "node --check dist/app.js"
+  },
+  "dependencies": {
+    "ethers": "6.13.5"
+  }
+}
