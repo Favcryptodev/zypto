@@ -14,7 +14,7 @@
   <span class="network">Ethereum mainnet</span>
 </header>
 <main>
-  <div class="heading"><div><p class="eyebrow">CONTRACT ADMINISTRATION</p><h1>Tax controls<span>.</span></h1><p>Read token settings. Connect the owner wallet to make changes.</p></div></div>
+  <div class="heading"><div><p class="eyebrow">CONTRACT ADMINISTRATION</p><h1>Tax controls<span>.</span></h1><p>Connect your wallet and read token settings. Updates are locked until the receiver is deployed.</p></div></div>
   <section class="wallet-panel" aria-labelledby="walletHeading">
     <div class="wallet-heading"><h2 id="walletHeading">Connect to Ethereum</h2><span class="caption">Chain ID 1 · Gas paid in ETH</span></div>
     <div class="wallet-controls">
@@ -25,7 +25,7 @@
     </div>
     <p id="walletState" class="notice" role="status" aria-live="polite">Choose an Ethereum wallet and connect. Connecting does not sign or send a transaction.</p>
   </section>
-  <aside class="deployment-note" aria-labelledby="deploymentHeading"><h2 id="deploymentHeading">Fee receiver deployment required</h2><p>The recovered fee receiver has not been deployed. This page reads the existing ZYPTO token below. Review and deploy a receiver, then make it fee-exempt before routing fees to it.</p></aside>
+  <aside class="deployment-note" aria-labelledby="deploymentHeading"><h2 id="deploymentHeading">Fee receiver deployment required</h2><p>The fee receiver is to be deployed. All transaction actions are locked, including for the token owner. Wallet connection and public token reads remain available.</p></aside>
   <section class="overview" aria-labelledby="tokenHeading">
     <div class="overview-head"><h2 id="tokenHeading">Existing ZYPTO token</h2><button class="subtle" id="refresh" type="button">Refresh</button></div>
     <a class="address" href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#code" target="_blank" rel="noopener noreferrer">0x7a65cb87f596caf31a4932f074c59c0592be77d7 ↗</a>
@@ -34,12 +34,26 @@
     <p id="readState" class="caption" role="status">Reading Ethereum…</p>
   </section>
   <div class="steps">
-    <section class="card"><div class="step-label"><span>01</span><p>SELL TAX</p><span id="feeBadge" class="badge">First step</span></div><h2>Keep 0.1% for liquidity</h2><p>Set liquidity to 0.1% and route 3.9% of each taxable sell to the marketing receiver.</p><div class="allocation"><div><strong>0.1<span>%</span></strong><span>Liquidity</span></div><div><strong>3.9<span>%</span></strong><span>Fee receiver</span></div></div><div class="bar"></div><p class="caption">Total sell tax stays at 4%. A receiver configured to split 75/25 would allocate 2.925% to marketing and 0.975% to buy-and-burn. Verify its deployed configuration. Buy tax rates stay unchanged.</p><code class="call">setSellFee(10, 390)</code><button id="setFee" type="button" disabled>Set sell tax to 4%</button><p class="tx" id="feeTx" aria-live="polite"></p></section>
-    <section class="card"><div class="step-label"><span>02</span><p>MARKETING RECEIVER</p><span id="receiverBadge" class="badge">After step 1</span></div><h2>Choose the receiver</h2><p>Enter a deployed, reviewed fee receiver contract. This console does not deploy it.</p><label for="newReceiver">New receiver address</label><input id="newReceiver" placeholder="0x…" autocomplete="off" spellcheck="false" aria-describedby="addressHint receiverInfo" aria-invalid="false"><p class="caption" id="addressHint">Enter a full 42-character Ethereum address.</p><div class="info" id="receiverInfo">The receiver must be fee-exempt. This change redirects <b>both buy and sell marketing fees</b>, including pending payouts. WETH transfers need a separate processing call; verify the receiver's processing and slippage settings before activation.</div><code class="call">setMarketingWallet(newAddress)</code><button id="setReceiver" type="button" disabled>Update marketing receiver</button><p class="tx" id="receiverTx" aria-live="polite"></p></section>
+    <section class="card">
+      <div class="step-label"><p>PLANNED SELL FEES</p><span class="badge">Not applied</span></div>
+      <h2>Allocation after deployment</h2>
+      <p>The planned 4% sell tax allocates 0.1% to liquidity and 3.9% to the configured fee receiver. Current token settings above are read-only.</p>
+      <div class="allocation"><div><strong>0.1<span>%</span></strong><span>Liquidity</span></div><div><strong>3.9<span>%</span></strong><span>Fee receiver</span></div></div>
+      <div class="bar"></div>
+      <p class="caption">A receiver configured to split 75/25 would allocate 2.925% to marketing and 0.975% to buy-and-burn. No configuration or tax change can be submitted from this release.</p>
+    </section>
+    <section class="card" aria-labelledby="receiverHeading">
+      <div class="step-label"><p>FEE RECEIVER</p><span id="deploymentState" class="badge">Awaiting verified deployment</span></div>
+      <h2 id="receiverHeading">Configured receiver</h2>
+      <p>The verified receiver will be supplied automatically by the application after deployment. No address entry is required.</p>
+      <div class="receiver-config"><span>Receiver address</span><strong id="configuredReceiver">To be deployed</strong></div>
+      <p class="info" id="actionLock">Receiver deployment is not verified. Updates, processing, approvals and signing are disabled. Wallet connection and read-only refresh remain available.</p>
+      <button id="update" type="button" disabled aria-disabled="true" aria-describedby="actionLock">Update</button>
+    </section>
   </div>
-  <p id="status" class="status" role="status" aria-live="polite">Public reads are available without a wallet. Each owner change is a separate Ethereum transaction that you review and confirm in your wallet.</p>
-  <footer><span>Owner wallet required for changes · No token approval required</span><a href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#writeContract" target="_blank" rel="noopener noreferrer">View token on Etherscan ↗</a></footer>
+  <p id="status" class="status" role="status" aria-live="polite">Wallet connection and public reads are available. All transaction actions remain locked until the receiver deployment is verified and configured.</p>
+  <footer><span>Read-only console · Receiver to be deployed</span><a href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#code" target="_blank" rel="noopener noreferrer">View token on Etherscan ↗</a></footer>
 </main>
-<script type="module" src="/app.js"></script>
+<script type="module" src="/app.js?v=receiver-lock-1"></script>
 </body>
 </html>

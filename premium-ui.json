@@ -3,7 +3,7 @@
   "sourceRoots": ["dist"],
   "locale": "en",
   "canonicalMap": "DESIGN.md",
-  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast"],
+  "requiredCapabilities": ["Select/Listbox", "Scrollbar", "Toast"],
   "ownership": { "Select/Listbox": "native" },
   "requiredCommands": ["unit", "syntax"],
   "commands": { "unit": "npm test", "syntax": "npm run check" },

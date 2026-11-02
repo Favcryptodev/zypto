@@ -32,9 +32,9 @@ components:
 
 ## Overview
 
-Product register: one public Ethereum administration screen for ZYPTO holders and the token owner. English is the supported language; no Japan-specific market behavior is requested. Desktop wallet extensions and mobile wallet in-app browsers are the supported connection surfaces. Preserve the existing dark instrument-panel identity: token address, measured percentages, and the real two-step configuration sequence carry the hierarchy. The oversized 0.1 / 3.9 allocation is its signature. Avoid promotional claims, decorative charts, or a rebrand for the custom domain.
+Product register: one public Ethereum administration screen for ZYPTO holders and the token owner. English is the supported language; no Japan-specific market behavior is requested. Desktop wallet extensions and mobile wallet in-app browsers are the supported connection surfaces. Preserve the existing dark instrument-panel identity: token address, measured percentages, planned allocation and receiver deployment state carry the hierarchy. The oversized 0.1 / 3.9 allocation is its signature. Avoid promotional claims, decorative charts, or a rebrand for the custom domain.
 
-The user request and existing token ABI govern behavior. Public page access does not grant owner authority. The receiver source package is undeployed; the existing token address must be labeled separately. Wallet account access must not request a signature or send a transaction. QR WalletConnect pairing is outside the configured capability.
+The user request and existing token ABI govern behavior. The receiver is undeployed. This release is read-only even for the token owner: all transaction, signature, approval, process and configuration actions are disabled. Wallet account access and Ethereum network switching remain available. The receiver display is noneditable “To be deployed”; only trusted version-controlled deployment configuration may supply a future verified receiver. Browser storage, URL parameters and user input must never configure it. QR WalletConnect pairing is outside the configured capability.
 
 Runtime ownership is Model B: `dist/style.css` is canonical. The frontmatter mirrors the accepted runtime values; no generator or framework adapter exists.
 
@@ -65,15 +65,14 @@ Flat tonal surfaces and 1px borders express hierarchy; no shadows or overlay lay
 | Capability | Canonical owner | Source of truth | Allowed variants | Verification |
 |---|---|---|---|---|
 | Select/Listbox | Native `walletSelect` | `dist/index.html`, `dist/app.js` | Browser/OS popup geometry accepted | Browser keyboard/open popup, wallet tests |
-| Form | Receiver field + `validReceiver` | Token ABI + `dist/app.js` | Text address with inline validation | Transaction mocks |
 | Scrollbar | Global CSS | `dist/style.css` | Forced-colors system fallback | Browser computed style |
 | Toast | Stable status/live regions | `say`, `walletState`, `readState` | Persistent inline status; no transient toast | Browser and mocks |
 
 Buttons keep visible focus and stable minimum height. Connecting disables duplicate requests and shows text progress. Disconnect clears the page session; wallet permissions remain controlled by the wallet. Account/network/disconnect events invalidate owner state and pending preflight work. Wrong-network, cancellation, pending-request, authorization, missing-wallet and timeout states provide recovery text. No secret or account state is persisted.
 
-Owner writes are pessimistic: freshly read owner/network/account, simulate the exact call, recheck the session before requesting the wallet transaction, then verify confirmation. The existing receiver deployment and fee-exemption checks remain required. Uncertain submitted transactions keep their explorer link and caution against duplicate submission.
+`dist/deployment.js` owns the immutable pending deployment state and transaction lock message. `execute` denies every action before touching a signer or write call, even when directly invoked or when a disabled button is altered. The current token ABI contains view functions only. This release contains no financial execution flow; a future verified deployment requires a reviewed application release rather than a browser toggle. The disabled Update button is the sole future configuration action and will use the configured receiver automatically.
 
-Field errors are associated through `aria-describedby` and `aria-invalid`; user input remains intact. Native buttons/selects provide keyboard semantics. Reduced motion disables transitions. There is no table, modal, secondary route or comparable sibling screen.
+The disabled Update button references the persistent lock explanation with `aria-describedby`. The receiver is readable text, not a field. Native buttons/selects provide keyboard semantics. Reduced motion disables transitions. There is no table, address form, modal, secondary route or comparable sibling screen.
 
 ## Do's and Don'ts
 

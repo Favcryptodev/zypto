@@ -5,7 +5,7 @@
   "scripts": {
     "prepare:vendor": "node scripts/prepare-vendor.mjs",
     "test": "node scripts/prepare-vendor.mjs && node --test test/wallet.test.mjs && node test/transactions.mjs",
-    "check": "node --check dist/app.js && node --check dist/wallet.js"
+    "check": "node --check dist/app.js && node --check dist/wallet.js && node --check dist/deployment.js"
   },
   "dependencies": {
     "ethers": "6.13.5"
