@@ -1,0 +1,18 @@
+{
+  "name": "zypto-fee-receiver",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node test/receiver.mjs",
+    "test:fork": "node test/fork.mjs",
+    "prepare:deployment": "node scripts/prepare-deployment.mjs",
+    "test:fork:revised": "node test/fork-revised.mjs"
+  },
+  "devDependencies": {
+    "solc": "0.8.24",
+    "ganache": "7.9.2",
+    "ethers": "6.13.5"
+  }
+}

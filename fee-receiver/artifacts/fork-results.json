@@ -1,0 +1,11 @@
+{
+  "block": 26065635,
+  "owner": "0x86A0985acba4eC2BE144ee23b0147633bE6C0F59",
+  "marketing": "0x7fFa6CBe2516B0c15966f0DA27261ffd0d9a8651",
+  "receiver": "0xbd479D344f8d66F828BE47785BB80fD94833F94e",
+  "receiverAddressIsForkOnly": true,
+  "automaticBuyAndBurn": "passed",
+  "currentTokenPayout": "succeeded",
+  "allMarketingNoLiquidity": "UniswapV2Library: INSUFFICIENT_INPUT_AMOUNT",
+  "scope": "Local fork only; token pending-marketing slot adjusted ONLY for explicit zero-remainder edge test"
+}

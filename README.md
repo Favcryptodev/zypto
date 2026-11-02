@@ -29,9 +29,11 @@ The original third-party ethers bundle is excluded following an automatic approv
 
 ## Contract recovery and review status
 
-The original `zypto-fee-receiver.zip` was located, but **the contract package is not included yet**. Its download helper reached metadata application and failed on Windows because Python's `os.setxattr` is unavailable. The transfer did not install the file. No substitute contract has been reconstructed from conversation text.
+The original contract package is now recovered in [`fee-receiver/`](fee-receiver/), including unmodified Solidity source, tests, build scripts, compiler artifacts and historical fork results. See [`fee-receiver/REVIEW.md`](fee-receiver/REVIEW.md) for the current review and limitations.
 
-The requested receiver-contract review remains pending recovery of the original Solidity source and tests. Website mock tests do not verify the receiver contract. In particular, ordinary WETH ERC20 transfers do not invoke a recipient's ETH `receive()` callback; the original contract must be inspected to establish any separate processing entrypoint or keeper requirement. The intended historical split is 75% tax receiver and 25% buy-and-burn, subject to confirmation against the original contract. Deployment status and contract runtime correctness have not been verified here.
+**Native ETH:** fixed 75% marketing / 25% buy-and-burn budget with best-effort automatic attempts and queued retries. **Direct WETH transfers are not processed**, even by `process()`; WETH support requires a separately designed change. The receiver is not deployed by this recovery, and no mainnet transactions were submitted. Original historical documentation says it was undeployed at handoff; current onchain status was not re-queried.
+
+Fresh local verification passed Solidity compilation, all 21 original EVM tests and an additional WETH-like ERC20 receipt-gap regression. Original mainnet-fork reports are historical, not a fresh run or an independent security audit.
 
 ## Validation
 

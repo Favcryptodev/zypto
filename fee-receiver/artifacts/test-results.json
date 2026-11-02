@@ -1,0 +1,27 @@
+{
+  "testCount": 21,
+  "passed": [
+    "Owner is live token owner, never deployer",
+    "Below threshold: automatically pays 75%; queues 25%",
+    "Threshold reached: auto-buy and dead-address transfer",
+    "Router revert cannot revert receipt or marketing payment",
+    "Router exhausts gas: receive and marketing still succeed",
+    "Too-small output rolls back only the buyback",
+    "Rejecting marketing wallet queues payment without blocking burn",
+    "Gas-exhausting marketing wallet does not block receipt or burn",
+    "Permissionless retry pays queued marketing only to fixed receiver",
+    "Reentrant marketing and router cannot reenter processing",
+    "Missing fee exemption defers buyback but forwards marketing",
+    "Owner floor rejects unattractive output without blocking receipts",
+    "Pause queues burns and still forwards marketing",
+    "Emergency ETH withdrawal requires owner and paused state",
+    "Emergency pro-rata accounting works with both pending buckets",
+    "Forced ETH surplus is recoverable without debiting allocations",
+    "Owner can recover accidentally sent ERC20 tokens",
+    "External callers cannot directly execute self-only burn",
+    "Burn cap limits one automatic attempt",
+    "Insufficient execution gas leaves funds queued rather than losing them",
+    "Two-step ownership cannot be claimed by deployer or zero address"
+  ],
+  "scope": "Local EVM; mock token/router adversarial behavior; no mainnet transactions"
+}
