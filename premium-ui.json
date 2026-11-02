@@ -1,0 +1,11 @@
+{
+  "profile": "product-admin",
+  "sourceRoots": ["dist"],
+  "locale": "en",
+  "canonicalMap": "DESIGN.md",
+  "requiredCapabilities": ["Select/Listbox", "Form", "Scrollbar", "Toast"],
+  "ownership": { "Select/Listbox": "native" },
+  "requiredCommands": ["unit", "syntax"],
+  "commands": { "unit": "npm test", "syntax": "npm run check" },
+  "evidence": { "failurePaths": "test/wallet.test.mjs" }
+}

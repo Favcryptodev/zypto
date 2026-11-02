@@ -8,4 +8,6 @@ __pycache__/
 coverage/
 .cache/
 dist/ethers.js
+dist/ethers.LICENSE.txt
 .openai/
+premium-audit.json
