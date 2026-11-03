@@ -1,4 +1,6 @@
 {
+  "testedAt": "2026-11-03T11:00:29.913Z",
+  "pricing": "Immutable validated pair; current V2 quote and configurable slippage",
   "testCount": 21,
   "passed": [
     "Owner is live token owner, never deployer",
@@ -12,7 +14,7 @@
     "Permissionless retry pays queued marketing only to fixed receiver",
     "Reentrant marketing and router cannot reenter processing",
     "Missing fee exemption defers buyback but forwards marketing",
-    "Owner floor rejects unattractive output without blocking receipts",
+    "Slippage bound rejects worse execution without blocking receipts",
     "Pause queues burns and still forwards marketing",
     "Emergency ETH withdrawal requires owner and paused state",
     "Emergency pro-rata accounting works with both pending buckets",

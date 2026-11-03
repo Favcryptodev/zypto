@@ -1,0 +1,30 @@
+{
+  "testedAt": "2026-11-03T11:01:11.673Z",
+  "testCount": 23,
+  "passed": [
+    "Constructor binds code-bearing canonical factory pair and sorted tokens",
+    "Zero and EOA pair addresses reject deployment",
+    "Code-bearing pair from another pool cannot substitute for factory pair",
+    "Factory mapping alone cannot admit a pair with a different factory",
+    "Wrong assets and reversed token ordering reject deployment",
+    "Factory without contract code rejects deployment",
+    "Constructor takes threshold/pair only, rejects zero threshold and defaults to 3% slippage",
+    "Only owner changes max spend/slippage within threshold and 10% bound",
+    "Spot quote includes V2 fee and price impact and execution uses the same pair/minimum",
+    "Quote automatically follows changed reserves without a fixed output floor",
+    "Idle pool reserve timestamps are accepted rather than mistaken for stale oracle data",
+    "Either empty reserve rejects the quote; marketing pays and burn stays retryable",
+    "Invalid reverted router quote defers burn without blocking marketing",
+    "Invalid short array router quote defers burn without blocking marketing",
+    "Invalid zero output router quote defers burn without blocking marketing",
+    "Invalid wrong input router quote defers burn without blocking marketing",
+    "Invalid reserve-inconsistent router quote defers burn without blocking marketing",
+    "Invalid long array router quote defers burn without blocking marketing",
+    "Zero input, zero rounded output and zero rounded minimum are rejected",
+    "Execution exactly at 3% minimum succeeds; below minimum rolls back burn only",
+    "Zero-slippage exact quote and 10% boundary execution are enforced",
+    "Invalid quote after WETH unwrap preserves marketing, accounting and a later retry",
+    "Runtime ABI has no obsolete floor or mutable router/pair setter"
+  ],
+  "scope": "Local EVM; validated canonical-pair mocks, live spot quote/slippage and ETH/WETH isolation; no mainnet writes."
+}

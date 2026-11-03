@@ -1,0 +1,59 @@
+{
+  "verifiedAt": "2026-11-03T11:01:48.769Z",
+  "status": "LOCAL_CHANGE_VERIFIED_UNDEPLOYED",
+  "source": "contracts/ZyptoFeeReceiver.sol",
+  "sourceSHA256": "185af5ff7729f76c23ede6873aa1885d2653e075b8856029e97cab02a191bb81",
+  "compiler": "0.8.24+commit.e11b9ed9.Emscripten.clang",
+  "runtimeBytes": 9617,
+  "creationBytecodeHash": "0xcb6dc3bd790658ffb3fcae71fd2ab61f6020d68d4f2c86bd93ad7f1ae6b14442",
+  "constructor": "(uint256 initialBurnThreshold,address initialPair)",
+  "defaultSlippageBps": 300,
+  "slippageInputRequired": false,
+  "ownerLimits": "setBuybackLimits(uint256 maxETH,uint256 maxSlippageBps)",
+  "selectedPair": "0x1eCb460a532c1D76937BEdbadF7D333DA30255a4",
+  "localTests": {
+    "nativeETH": 21,
+    "WETH": 13,
+    "pairAndQuote": 23,
+    "deploymentPreparation": 20,
+    "total": 77,
+    "command": "npm run build && npm run test:all",
+    "allPassed": true
+  },
+  "forkTests": {
+    "canonicalWETH": {
+      "block": 26333835,
+      "sellCycles": 6,
+      "canonicalWETH": {
+        "explicitDeposit": true,
+        "directTransferRequiresProcess": true,
+        "permissionlessSweep": true,
+        "idempotentRetry": true,
+        "realRouterBurns": true
+      },
+      "failedBurnPreservesMarketing": true
+    },
+    "nativeETH": {
+      "block": 26333837,
+      "sellCycles": 6,
+      "failedBurnPreservesMarketing": true
+    },
+    "allPassed": true
+  },
+  "artifactConsistency": {
+    "sourceABIBytecodeAndCompilerInputMatch": true,
+    "unsignedCalldataMatchesBuild": true
+  },
+  "unsignedPlan": {
+    "preparedBlock": 26333835,
+    "thresholdWei": "10000000000000000",
+    "defaultSlippageBps": "300",
+    "refreshBeforeDeployment": true
+  },
+  "limitations": [
+    "Same-transaction spot quotes can be manipulated; no independent oracle, TWAP or MEV protection.",
+    "Controlled tests are not an independent security audit or guarantee for every market state.",
+    "Mainnet wrapper remains undeployed; no signing, mainnet writes, activation, keeper setup or GitHub push by this implementation task."
+  ],
+  "historicalEvidence": "artifacts/fork-results.json is retained from the earlier zero-liquidity investigation; it is not a current-version test result."
+}

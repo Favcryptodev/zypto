@@ -1,4 +1,6 @@
 {
+  "testedAt": "2026-11-03T11:00:57.180Z",
+  "pricing": "Immutable validated pair; current V2 quote and configurable slippage",
   "testCount": 13,
   "passed": [
     "Explicit WETH deposit unwraps through WETH9 2300-gas transfer, accounts once and burns",
@@ -12,7 +14,7 @@
     "Gas-exhausting unwrap is isolated from native ETH marketing",
     "Non-WETH callback during unwrap is rejected without double-accounting",
     "Dust stays exactly accounted and follows existing rounding rule",
-    "Owner floor and paused burns apply identically to WETH receipts",
+    "Slippage bound and paused burns apply identically to WETH receipts",
     "Owner can emergency recover queued WETH only when paused"
   ],
   "scope": "Local EVM, WETH9-style stipend callback plus adversarial mock modes; no mainnet transactions"

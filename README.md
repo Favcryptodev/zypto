@@ -29,11 +29,11 @@ The original third-party ethers bundle is excluded following an automatic approv
 
 ## Contract recovery and review status
 
-Recovered contract source, tests and artifacts are in [`fee-receiver/`](fee-receiver/). The original unmodified recovery is preserved in Git history; the current version adds WETH ingestion. See [`fee-receiver/REVIEW.md`](fee-receiver/REVIEW.md) for verification and limitations.
+Recovered contract source, tests and artifacts are in [`fee-receiver/`](fee-receiver/). The original unmodified recovery is preserved in Git history; the current version adds WETH ingestion and live quotes from an explicitly validated ZYPTO/WETH pair. The constructor takes only the burn threshold and pair address; slippage starts at 3% internally and remains owner-adjustable within 0–10%. See [`fee-receiver/REVIEW.md`](fee-receiver/REVIEW.md) for verification and limitations.
 
 **Native ETH:** fixed 75% marketing / 25% buy-and-burn budget, with best-effort automatic attempts and queued retries. **WETH:** approve then call `depositWETHAndProcess(amount)` for same-transaction processing attempts. Ordinary direct WETH transfers cannot trigger code; anyone can call `process()` (or a later ETH receipt can trigger a sweep). There is no deployed keeper or promise of autonomous processing after a bare ERC20 transfer.
 
-The modified contract is **undeployed**. No mainnet transaction was submitted. Fresh verification passed compilation, 34 local tests and a local-mainnet-fork run at block 26,328,635 covering real ZYPTO sells and canonical WETH deposit/sweep with real-router burns. See the current review and fork report; this is not an independent security audit.
+The modified contract is **undeployed**. No mainnet transaction was submitted. Fresh verification passed compilation, 77 local checks and local-mainnet-fork runs at blocks 26,333,835 and 26,333,837 covering real ZYPTO sells, canonical WETH deposit/sweep, live quotes, and real-router burns. Spot quotes are not an independent price oracle or protection against price manipulation. See the current review and fork report; this is not an independent security audit.
 
 ## Validation
 

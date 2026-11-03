@@ -1,8 +1,14 @@
 {
-  "testedAt": "2026-10-07T13:46:23.420Z",
-  "forkBlock": 26140891,
+  "testedAt": "2026-11-03T11:01:03.175Z",
+  "forkBlock": 26333837,
   "owner": "0x86A0985acba4eC2BE144ee23b0147633bE6C0F59",
   "marketing": "0x7fFa6CBe2516B0c15966f0DA27261ffd0d9a8651",
+  "pair": "0x1eCb460a532c1D76937BEdbadF7D333DA30255a4",
+  "pricing": {
+    "kind": "Validated immutable pair spot quote",
+    "slippageBps": 300,
+    "fixedFloor": false
+  },
   "settings": {
     "sellLiquidityBps": 10,
     "sellReceiverBps": 390,
@@ -60,7 +66,7 @@
   ],
   "failedBurnStillPaidMarketingAndCompletedSell": true,
   "originalTokenSwapThreshold": "20000000000000000000000",
-  "testTokenSwapThreshold": "1668393566243315977163",
+  "testTokenSwapThreshold": "1916830373792163659469",
   "testBurnThreshold": "10000000000000",
   "scope": "Local Ethereum fork. Token fee balance/pending fees cleared before each test sell; token swap threshold lowered to exercise six successive payout cycles. Real ZYPTO, Uniswap router and LP pair used. No mainnet writes."
 }

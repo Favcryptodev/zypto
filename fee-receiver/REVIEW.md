@@ -1,25 +1,33 @@
-# WETH ingestion update review — 2026-11-02
+# Pair and current-quote update review — 2026-11-03
 
-**UNDEPLOYED.** The original receiver was native-ETH-only. This update adds WETH ingestion without changing the fixed 75/25 split or immutable token/router/marketing configuration. The original recovery commit preserves prior source and historical evidence. This is a scoped code review and local test run, not an independent security audit.
+**UNDEPLOYED.** This update replaces the owner-maintained fixed token-per-ETH floor with a current pair quote and configurable slippage. The constructor now takes `(initialBurnThreshold, initialPair)`; slippage automatically starts at 300 bps (3%) without a deployment input. The prior native ETH/WETH receipt behavior, fixed 75/25 split and owner controls remain unchanged. This scoped implementation review and test run is not an independent security audit.
 
-## Receipt paths
+## Pool and quote binding
 
-- Native ETH: account once and attempt wrapped-balance sweep, marketing payout, then buy-and-burn.
-- Explicit WETH: `approve` followed by `depositWETHAndProcess(amount)` pulls only caller funds, verifies the received amount, and attempts unwrapping/processing.
-- Direct WETH transfer: does not call this contract. Anyone can call `process()` afterward; a later ETH receipt can also sweep. A keeper/caller is required if no further transaction occurs. No automation service is included.
+The immutable mainnet ZYPTO token supplies immutable router/WETH configuration and the live owner/marketing snapshot. The explicit pair must have code, match `router.factory().getPair(ZYPTO, WETH)`, report that factory, and expose the exact sorted token0/token1 pair. The factory must have code. For the verified canonical Uniswap V2 router/factory, the direct WETH-to-ZYPTO route executes through this same unique pair. Neither the router nor pair can later be replaced.
 
-`unwrapWETH()` is self-only while the processing lock is held. Its bounded external-call frame isolates unwrap failure from existing ETH payout. A warmed unwrap guard plus trusted WETH sender identifies the stipend-limited callback, which returns without accounting. The outer frame checks exact native balance increase and zero residual WETH before allocating once. Failed/short unwrap rolls the isolated frame back; funds remain wrapped and retryable. Reentry into deposit/process is rejected.
+Every buyback reads current pair reserves, rejects empty reserves, calculates the standard V2 997/1000 output including price impact, and requires the router quote to match exactly. Quote array length/input/output and nonzero output/minimum are checked. Slippage is configurable from 0 through 1,000 bps; `setBuybackLimits(maxETH, slippageBps)` remains owner-only and requires maximum spend at least equal to the threshold. The former fixed floor and its getter/constructor argument are removed.
 
-## Preserved constraints
+The reserve timestamp is intentionally not interpreted as stale-oracle data. It marks the last pool update; an idle pool can still have valid reserves. Both quote calculations use the same spot reserves, so their agreement provides no independent fair-price signal. A pre-transaction reserve manipulation or sandwich remains possible even at zero slippage. This is not a TWAP, oracle, or MEV-protected design. Checked arithmetic may revert for astronomically large public quote inputs; realistic funded buyback amounts remain within bounds.
 
-75% rounded down goes to marketing; the remainder goes to the burn budget. Marketing is attempted first. Failed marketing stays queued, while buyback failures independently roll back. Buybacks remain threshold/cap/gas/fee-exemption/pause dependent. The minimum is the larger of a spot quote less owner-bounded slippage and an owner-maintained fixed output floor; this is not a TWAP or sandwich-proof design. A stale floor can permit unfavorable execution or defer burns.
+## Receipt and isolation preservation
 
-Burns transfer measured bought tokens to the dead address; token totalSupply is not reduced. Initial ownership is copied from ZYPTO rather than deployer; later ownership requires two steps. The marketing wallet is an immutable deployment-time snapshot. Owner emergency recovery while paused includes pending ETH and WETH, so funds are administratively recoverable rather than an irrevocable burn guarantee.
+- Native ETH accounts once, then attempts wrapped-balance sweep, marketing payout and buy-and-burn.
+- Explicit WETH deposits pull only caller-approved funds, verify the amount, and attempt unwrap/processing.
+- Direct WETH transfers require a later `process()` call or ETH receipt; no keeper is deployed.
+- `unwrapWETH()` is self-only under the processing lock. Its isolated frame and warmed callback guard support canonical WETH9's 2,300-gas transfer, verify exact proceeds, and account once. Failed unwrap remains retryable without blocking native marketing.
+- Marketing receives 75% rounded down; the remainder goes to the burn budget. Marketing is attempted first. Quote, router, output, token-transfer and gas failures roll back only the buyback. A failed marketing call retains its independent pending balance.
+- The receiver must be fee-exempt on ZYPTO. Buys arrive at the receiver and measured tokens are transferred to the dead address. This does not reduce token totalSupply.
+- Initial owner is copied from ZYPTO rather than deployer. Later receiver ownership uses two steps. Paused owner emergency recovery can withdraw pending ETH/WETH, so this remains owner-administered rather than an irrevocable burn commitment.
 
-## Verification and deployment limits
+## Verification
 
-The final source compiles with Solidity 0.8.24 to an 8,731-byte runtime. All 21 original native-ETH local tests passed; the dedicated WETH suite additionally covers the new receipt paths. The WETH mock uses canonical WETH9-style 2,300-gas transfer and additionally tests reverting/short unwrap, failed transferFrom and reentry. Historical fork reports are retained and cover the original implementation. A fresh local Ethereum fork at block 26,328,635 also passed: six actual ZYPTO sells with LP minting, marketing and automatic burns; canonical WETH explicit deposit and real-router burn; direct canonical WETH transfer followed by permissionless processing and idempotent retry; and a deliberate burn failure that preserved marketing and the sell. See `artifacts/weth-fork-results.json` and `test/fork-weth.mjs`. These controlled tests lower thresholds and clear fee balances on the local fork; they are not a guarantee for all market states. No real transactions, deployment, receiver activation or keeper setup occurred.
+Solidity 0.8.24, optimizer 200 runs, EVM paris compiles to a 9,617-byte runtime. The 21 native ETH tests and 13 WETH tests pass after migration, plus 23 new pair/quote cases (57 contract cases total). New cases cover constructor rejection, dynamic reserve prices, old timestamps, malformed/zero/inconsistent quotes, slippage boundaries, same-pair execution and ETH/WETH marketing independence. Deployment preparation has 20 separate isolated mocked-RPC checks, including invalid configuration and stale artifacts.
 
-The old deployment plan is explicitly invalidated. Fresh preparation and review are required before separately authorized deployment. Regenerated ABI/bytecode/standard input correspond to the updated source. Dependencies are pinned; installed vendor directories and credentials are not published.
+The final two-input constructor passed the WETH/mainnet fork at block 26,333,835 and the native integration fork at block 26,333,837. The updated real-contract fork suites assert receiver pair and quote identity, then exercise actual ZYPTO sells, LP minting, marketing and nested automatic burns through canonical Uniswap V2 under the existing 650,000-gas buyback cap. WETH integration additionally covers real WETH explicit deposit, direct transfer plus permissionless processing, and idempotent retry. Fork reports record exact run blocks/results and use controlled local threshold/fee-balance adjustments; these are not guarantees for every market state.
 
-Independent second-agent source review found no remaining blocker for canonical WETH9. The unwrap callback rejects unexpected senders while the unwrap guard is active.
+Independent source review found no blocking source-level issue. For the verified token path, the preceding router swap updates reserves and releases the pair lock before the receiver payout; fee exemption prevents nested taxable fee processing. Runtime gas sufficiency is established by the fork tests rather than assumed from source review.
+
+## Deployment limitations
+
+Fresh ABI, bytecode and compiler input correspond to the new source. Fresh unsigned preparation validates live owner/marketing and code/pair/factory/reserves/quote at one Ethereum block and checks the block hash for reorgs. The bundled plan is informational and requires refresh/review before any separately authorized deployment. Any prior fixed-floor or three-argument creation calldata is invalid for this version. No signing, broadcast, live token settings, receiver activation, GitHub push or keeper setup occurred in this work.

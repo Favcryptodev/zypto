@@ -10,7 +10,10 @@
     "prepare:deployment": "node scripts/prepare-deployment.mjs",
     "test:fork:revised": "node test/fork-revised.mjs",
     "test:weth": "node test/weth.mjs",
-    "test:fork:weth": "node test/fork-weth.mjs"
+    "test:fork:weth": "node test/fork-weth.mjs",
+    "test:pair": "node test/pair.mjs",
+    "test:all": "npm test && npm run test:weth && npm run test:pair && npm run test:deployment",
+    "test:deployment": "node test/deployment.mjs"
   },
   "devDependencies": {
     "solc": "0.8.24",

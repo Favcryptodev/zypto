@@ -15,7 +15,17 @@ interface IWrappedETH {
     function transferFrom(address,address,uint256) external returns (bool);
     function withdraw(uint256) external;
 }
+interface IBuyFactory {
+    function getPair(address,address) external view returns (address);
+}
+interface IBuyPair {
+    function factory() external view returns (address);
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function getReserves() external view returns (uint112,uint112,uint32);
+}
 interface IBuyRouter {
+    function factory() external view returns (address);
     function WETH() external view returns (address);
     function getAmountsOut(uint256,address[] calldata) external view returns(uint256[] memory);
     function swapExactETHForTokensSupportingFeeOnTransferTokens(
@@ -30,17 +40,20 @@ abstract contract FeeReceiverCore {
     uint256 public constant MARKETING_GAS = 40_000;
     uint256 public constant BUYBACK_GAS = 650_000;
     uint256 public constant WETH_GAS = 200_000;
+    uint256 public constant MAX_SLIPPAGE_BPS = 1_000;
+    uint256 public constant DEFAULT_SLIPPAGE_BPS = 300;
     uint256 private constant GAS_RESERVE = 70_000;
     IZypto public immutable token;
     IBuyRouter public immutable router;
+    IBuyPair public immutable pair;
+    bool private immutable wethIsToken0;
     address public immutable weth;
     address payable public immutable marketingWallet;
     address public owner;
     address public pendingOwner;
     uint256 public burnThreshold;
     uint256 public maxBuybackETH;
-    uint256 public minTokensPerETH;
-    uint256 public slippageBps = 300; // 3% below current quote, still bounded by owner price floor.
+    uint256 public slippageBps;
     uint256 public marketingPending;
     uint256 public burnPending;
     uint256 public totalReceived;
@@ -54,6 +67,8 @@ abstract contract FeeReceiverCore {
     error Unauthorized();
     error InvalidAddress();
     error InvalidAmount();
+    error InvalidPair();
+    error InvalidQuote();
     error InvalidDeadline();
     error BuybacksPaused();
     error PauseRequired();
@@ -67,7 +82,7 @@ abstract contract FeeReceiverCore {
     event WETHDeferred();
     event BuybackBurned(uint256 eth, uint256 tokens);
     event BurnThresholdChanged(uint256 oldThreshold, uint256 newThreshold);
-    event BuybackLimitsChanged(uint256 maxETH, uint256 minTokensPerETH, uint256 slippageBps);
+    event BuybackLimitsChanged(uint256 maxETH, uint256 slippageBps);
     event MarketingDeferred(uint256 eth);
     event BuybackDeferred(uint256 eth);
     event BuybackPauseChanged(bool paused);
@@ -79,9 +94,9 @@ abstract contract FeeReceiverCore {
     modifier onlyOwner() { if (msg.sender != owner) revert Unauthorized(); _; }
     modifier nonReentrant() { if (entered != 1) revert ReentrantCall(); entered = 2; _; entered = 1; }
 
-    constructor(address tokenAddress, uint256 initialBurnThreshold, uint256 initialMinTokensPerETH) {
+    constructor(address tokenAddress, uint256 initialBurnThreshold, address initialPair) {
         if (tokenAddress.code.length == 0) revert InvalidAddress();
-        if (initialBurnThreshold == 0 || initialMinTokensPerETH == 0) revert InvalidAmount();
+        if (initialBurnThreshold == 0) revert InvalidAmount();
         token = IZypto(tokenAddress);
         address initialOwner = token.owner();
         address marketing = token._marketingWallet();
@@ -91,15 +106,27 @@ abstract contract FeeReceiverCore {
             || marketing == address(this) || marketing == tokenAddress || routerAddress.code.length == 0
             || wrappedETH.code.length == 0) revert InvalidAddress();
         if (IBuyRouter(routerAddress).WETH() != wrappedETH) revert InvalidAddress();
+        // The canonical V2 router executes the direct path through its factory's
+        // unique pair. A supplied address cannot redirect the quote or the swap.
+        address factory = IBuyRouter(routerAddress).factory();
+        if (factory.code.length == 0 || initialPair.code.length == 0) revert InvalidPair();
+        if (IBuyFactory(factory).getPair(tokenAddress, wrappedETH) != initialPair
+            || IBuyPair(initialPair).factory() != factory) revert InvalidPair();
+        (address first, address second) = tokenAddress < wrappedETH
+            ? (tokenAddress, wrappedETH) : (wrappedETH, tokenAddress);
+        if (IBuyPair(initialPair).token0() != first || IBuyPair(initialPair).token1() != second) revert InvalidPair();
+        pair = IBuyPair(initialPair);
+        wethIsToken0 = first == wrappedETH;
         owner = initialOwner; // Never msg.sender: the deployer has no authority.
         marketingWallet = payable(marketing); // Snapshot the existing live receiver before switching.
         router = IBuyRouter(routerAddress);
         weth = wrappedETH;
         burnThreshold = initialBurnThreshold;
         maxBuybackETH = initialBurnThreshold * 10;
-        minTokensPerETH = initialMinTokensPerETH;
+        slippageBps = DEFAULT_SLIPPAGE_BPS;
         emit OwnershipTransferred(address(0), initialOwner);
         emit BurnThresholdChanged(0, initialBurnThreshold);
+        emit BuybackLimitsChanged(maxBuybackETH, DEFAULT_SLIPPAGE_BPS);
     }
 
     /// @dev Accounting precedes attempts; failures retain allocations. This uses call(), not send()/transfer().
@@ -192,7 +219,7 @@ abstract contract FeeReceiverCore {
     }
 
     /// @dev Self-call boundary rolls back only the buyback if a router, token or output check fails.
-    ///      No owner/deployer/caller can choose a different destination or bypass the price floor.
+    ///      No owner/deployer/caller can choose a different pool or destination.
     function executeAutomaticBuyback(uint256 ethAmount) external {
         if (msg.sender != address(this) || entered != 2) revert Unauthorized();
         if (buybacksPaused) revert BuybacksPaused();
@@ -203,11 +230,7 @@ abstract contract FeeReceiverCore {
         address[] memory path = new address[](2);
         path[0] = weth;
         path[1] = address(token);
-        uint256[] memory quote = router.getAmountsOut(ethAmount, path);
-        uint256 minimum = quote[1] * (10_000 - slippageBps) / 10_000;
-        uint256 floor = ethAmount * minTokensPerETH / 1 ether;
-        if (floor > minimum) minimum = floor;
-        if (minimum == 0) revert InvalidAmount();
+        (, uint256 minimum) = quoteBuyback(ethAmount);
         burnPending -= ethAmount;
         uint256 beforeBalance = token.balanceOf(address(this));
         uint256 beforeDead = token.balanceOf(BURN_ADDRESS);
@@ -229,14 +252,34 @@ abstract contract FeeReceiverCore {
         emit BurnThresholdChanged(burnThreshold, threshold);
         burnThreshold = threshold;
     }
-    /// @notice Floor is token base units per 1 ETH. It limits same-block spot-price manipulation.
-    /// @dev Owner must maintain the floor as the market changes; automatic spot quotes are not a TWAP.
-    function setBuybackLimits(uint256 maxETH, uint256 tokenFloorPerETH, uint256 maxSlippageBps) external onlyOwner {
-        if (maxETH < burnThreshold || tokenFloorPerETH == 0 || maxSlippageBps > 1_000) revert InvalidAmount();
+    /// @notice Current direct-pair V2 quote and minimum output, in token base units.
+    /// @dev This is a same-transaction spot quote, not an oracle, TWAP or MEV protection.
+    ///      The reserve timestamp marks the last pool update, not price freshness.
+    function quoteBuyback(uint256 ethAmount) public view returns (uint256 quotedTokens, uint256 minimumTokens) {
+        if (ethAmount == 0) revert InvalidAmount();
+        (uint112 reserve0, uint112 reserve1,) = pair.getReserves();
+        (uint256 reserveIn, uint256 reserveOut) = wethIsToken0
+            ? (uint256(reserve0), uint256(reserve1)) : (uint256(reserve1), uint256(reserve0));
+        if (reserveIn == 0 || reserveOut == 0) revert InvalidQuote();
+        // Uniswap V2's 0.30% pool fee; checked against the immutable router below.
+        uint256 amountWithFee = ethAmount * 997;
+        quotedTokens = amountWithFee * reserveOut / (reserveIn * 1_000 + amountWithFee);
+        if (quotedTokens == 0) revert InvalidQuote();
+        address[] memory path = new address[](2);
+        path[0] = weth;
+        path[1] = address(token);
+        uint256[] memory amounts = router.getAmountsOut(ethAmount, path);
+        if (amounts.length != 2 || amounts[0] != ethAmount || amounts[1] != quotedTokens) revert InvalidQuote();
+        minimumTokens = quotedTokens * (10_000 - slippageBps) / 10_000;
+        if (minimumTokens == 0) revert InvalidQuote();
+    }
+
+    /// @notice Maximum spend per attempt and slippage below the current pair quote.
+    function setBuybackLimits(uint256 maxETH, uint256 maxSlippageBps) external onlyOwner {
+        if (maxETH < burnThreshold || maxSlippageBps > MAX_SLIPPAGE_BPS) revert InvalidAmount();
         maxBuybackETH = maxETH;
-        minTokensPerETH = tokenFloorPerETH;
         slippageBps = maxSlippageBps;
-        emit BuybackLimitsChanged(maxETH, tokenFloorPerETH, maxSlippageBps);
+        emit BuybackLimitsChanged(maxETH, maxSlippageBps);
     }
     function setBuybacksPaused(bool paused) external onlyOwner {
         buybacksPaused = paused;
@@ -289,9 +332,9 @@ abstract contract FeeReceiverCore {
     }
 }
 
-/// @notice Ethereum-mainnet ZYPTO fee receiver. Constructor takes an ETH threshold and token-output floor, never an owner.
+/// @notice Ethereum-mainnet ZYPTO receiver with a fixed pair and configurable quote slippage, never a deployer owner.
 contract ZyptoFeeReceiver is FeeReceiverCore {
-    constructor(uint256 initialBurnThreshold, uint256 initialMinTokensPerETH)
-        FeeReceiverCore(0x7A65CB87F596Caf31a4932f074c59c0592bE77D7, initialBurnThreshold, initialMinTokensPerETH)
+    constructor(uint256 initialBurnThreshold, address initialPair)
+        FeeReceiverCore(0x7A65CB87F596Caf31a4932f074c59c0592bE77D7, initialBurnThreshold, initialPair)
     { require(block.chainid == 1, "Ethereum mainnet only"); }
 }
