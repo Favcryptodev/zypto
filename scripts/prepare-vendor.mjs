@@ -6,7 +6,7 @@ import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 // Unused hosted-provider integrations and their default API identifiers stay out.
 const result = await build({
   stdin: {
-    contents: "export { BrowserProvider, JsonRpcProvider, FetchRequest, Contract, getAddress, ZeroAddress, Interface } from 'ethers';",
+    contents: "export { BrowserProvider, JsonRpcProvider, FetchRequest, Contract, getAddress, ZeroAddress, Interface, keccak256, formatEther, formatUnits } from 'ethers';",
     resolveDir: fileURLToPath(new URL('../', import.meta.url)),
     sourcefile: 'zypto-ethers-entry.js',
   },

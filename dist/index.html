@@ -1,59 +1,41 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#10131b">
-  <meta name="description" content="Read ZYPTO token settings and connect an Ethereum owner wallet to review tax configuration.">
-  <title>Zypto | Tax Console</title>
-  <link rel="stylesheet" href="/style.css">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10131b"><meta name="description" content="Verify and configure ZYPTO owner settings on Ethereum, one reviewed wallet transaction at a time."><title>Zypto | Tax Console</title><link rel="stylesheet" href="/style.css"></head>
 <body>
-<header>
-  <a class="brand" href="/" aria-label="Zypto Tax Console">Z<span>↗</span><b>ZYPTO <small>OWNER CONSOLE</small></b></a>
-  <span class="network">Ethereum mainnet</span>
-</header>
+<header><a class="brand" href="/" aria-label="Zypto Tax Console">Z<span>↗</span><b>ZYPTO <small>OWNER CONSOLE</small></b></a><span class="network">Ethereum mainnet</span></header>
 <main>
-  <div class="heading"><div><p class="eyebrow">CONTRACT ADMINISTRATION</p><h1>Tax controls<span>.</span></h1><p>Connect your wallet and read token settings. Updates are locked until the receiver is deployed.</p></div></div>
+  <div class="heading"><div><p class="eyebrow">CONTRACT ADMINISTRATION</p><h1>Receiver setup<span>.</span></h1><p>Three owner-only steps. Every address and fee is prefilled.</p></div></div>
   <section class="wallet-panel" aria-labelledby="walletHeading">
     <div class="wallet-heading"><h2 id="walletHeading">Connect to Ethereum</h2><span class="caption">Chain ID 1 · Gas paid in ETH</span></div>
-    <div class="wallet-controls">
-      <div class="wallet-choice"><label for="walletSelect">Ethereum wallet</label><select id="walletSelect" aria-describedby="walletState"><option value="">No wallet detected</option></select></div>
-      <button id="connect" type="button">Connect wallet</button>
-      <button id="disconnect" class="secondary" type="button" hidden>Disconnect</button>
-      <button id="findWallets" class="subtle" type="button">Find wallets</button>
-    </div>
-    <p id="walletState" class="notice" role="status" aria-live="polite">Choose an Ethereum wallet and connect. Connecting does not sign or send a transaction.</p>
+    <div class="wallet-controls"><div class="wallet-choice"><label for="walletSelect">Ethereum wallet</label><select id="walletSelect" aria-describedby="walletState"><option value="">No wallet detected</option></select></div><button id="connect" type="button">Connect wallet</button><button id="disconnect" type="button" class="secondary" hidden>Disconnect</button><button id="findWallets" type="button" class="subtle">Find wallets</button></div>
+    <p id="walletState" class="notice" role="status" aria-live="polite">Connecting only requests account access; it does not send a transaction.</p>
   </section>
-  <aside class="deployment-note" aria-labelledby="deploymentHeading"><h2 id="deploymentHeading">Fee receiver deployment required</h2><p>The fee receiver is to be deployed. All transaction actions are locked, including for the token owner. Wallet connection and public token reads remain available.</p></aside>
   <section class="overview" aria-labelledby="tokenHeading">
-    <div class="overview-head"><h2 id="tokenHeading">Existing ZYPTO token</h2><button class="subtle" id="refresh" type="button">Refresh</button></div>
-    <a class="address" href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#code" target="_blank" rel="noopener noreferrer">0x7a65cb87f596caf31a4932f074c59c0592be77d7 ↗</a>
+    <div class="overview-head"><h2 id="tokenHeading">Current ZYPTO token settings</h2><button class="subtle" id="refresh" type="button">Refresh</button></div>
+    <a class="address" href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#code" target="_blank" rel="noopener noreferrer">0x7A65CB87F596Caf31a4932f074c59c0592bE77D7 ↗</a>
     <div class="stats"><div><span>Sell / liquidity</span><strong id="liq">—</strong></div><div><span>Sell / marketing</span><strong id="mkt">—</strong></div><div><span>Total sell tax</span><strong id="total">—</strong></div></div>
-    <div class="details"><div><span>Token owner</span><code id="owner">Loading…</code></div><div><span>Current marketing receiver</span><code id="receiver">Loading…</code></div><div><span>Buy tax</span><span id="buy">—</span></div></div>
-    <p id="readState" class="caption" role="status">Reading Ethereum…</p>
+    <div class="details"><div><span>Current token owner</span><code id="owner">Checking…</code></div><div><span>Current marketing receiver</span><code id="receiver">Checking…</code></div><div><span>Buy fees</span><span id="buy">Checking…</span></div></div><p id="readState" class="caption" role="status">Checking deployed code and settings…</p>
   </section>
   <div class="steps">
-    <section class="card">
-      <div class="step-label"><p>PLANNED SELL FEES</p><span class="badge">Not applied</span></div>
-      <h2>Allocation after deployment</h2>
-      <p>The planned 4% sell tax allocates 0.1% to liquidity and 3.9% to the configured fee receiver. Current token settings above are read-only.</p>
-      <div class="allocation"><div><strong>0.1<span>%</span></strong><span>Liquidity</span></div><div><strong>3.9<span>%</span></strong><span>Fee receiver</span></div></div>
-      <div class="bar"></div>
-      <p class="caption">A receiver configured to split 75/25 would allocate 2.925% to marketing and 0.975% to buy-and-burn. No configuration or tax change can be submitted from this release.</p>
-    </section>
-    <section class="card" aria-labelledby="receiverHeading">
-      <div class="step-label"><p>FEE RECEIVER</p><span id="deploymentState" class="badge">Awaiting verified deployment</span></div>
-      <h2 id="receiverHeading">Configured receiver</h2>
-      <p>The verified receiver will be supplied automatically by the application after deployment. No address entry is required.</p>
-      <div class="receiver-config"><span>Receiver address</span><strong id="configuredReceiver">To be deployed</strong></div>
-      <p class="info" id="actionLock">Receiver deployment is not verified. Updates, processing, approvals and signing are disabled. Wallet connection and read-only refresh remain available.</p>
-      <button id="update" type="button" disabled aria-disabled="true" aria-describedby="actionLock">Update</button>
-    </section>
+    <section class="card"><div class="step-label"><p>INTENDED SELL FEES</p><span class="badge">Total stays 4%</span></div><h2>0.1% liquidity + 3.9% receiver</h2><div class="allocation"><div><strong>0.1<span>%</span></strong><span>Liquidity</span></div><div><strong>3.9<span>%</span></strong><span>Fixed receiver</span></div></div><div class="bar"></div><p>The receiver allocates 75% to its immutable payout wallet and 25% to the ZYPTO buy-and-burn budget: 2.925% and 0.975% of a taxable sell respectively. Token output depends on price and AMM fees.</p><p class="info">Buy fee rates are preserved. Changing the marketing receiver affects <b>both buy and sell marketing payouts</b>, including pending payouts. None of these setup calls transfers ETH to the token contract; only network gas is paid.</p></section>
+    <section class="card" aria-labelledby="receiverHeading"><div class="step-label"><p>DEPLOYED RECEIVER</p><span id="deploymentState" class="badge">Verification required</span></div><h2 id="receiverHeading">Fixed application configuration</h2><a id="configuredReceiver" class="address" href="https://etherscan.io/address/0xC4C6B2320Fc2E77d55007dd22daE1f2D70826CE3#code" target="_blank" rel="noopener noreferrer">0xC4C6B2320Fc2E77d55007dd22daE1f2D70826CE3</a><div class="receiver-config"><span>Immutable 75% payout destination</span><code id="fixedPayout">0x7fFa6CBe2516B0c15966f0DA27261ffd0d9a8651</code></div><p class="caption">The receiver's executable bytecode and immutable destinations were independently checked. The app verifies the pinned live code and destinations before every setup step. This is not a security audit.</p><p class="caption">Buybacks use a spot quote and slippage limit; they are not MEV-proof. Direct WETH transfers require a later processing trigger. This setup does not send WETH, approve spending or call processing.</p></section>
   </div>
-  <p id="status" class="status" role="status" aria-live="polite">Wallet connection and public reads are available. All transaction actions remain locked until the receiver deployment is verified and configured.</p>
-  <footer><span>Read-only console · Receiver to be deployed</span><a href="https://etherscan.io/address/0x7a65cb87f596caf31a4932f074c59c0592be77d7#code" target="_blank" rel="noopener noreferrer">View token on Etherscan ↗</a></footer>
-</main>
-<script type="module" src="/app.js?v=receiver-lock-1"></script>
-</body>
-</html>
+  <section class="setup-panel" aria-labelledby="setupHeading"><h2 id="setupHeading">Complete only the necessary steps</h2><p>Already satisfied settings are skipped. Review and confirm each remaining transaction separately; the app never submits a batch.</p>
+    <ol class="setup-list">
+      <li><div><h3>1. Make the receiver fee-exempt</h3><code>excludeFromFees(fixedReceiver, true)</code><p>Required by the receiver's buyback code even when the token's buy fee is 0%. This is a token fee exemption, not a spending approval.</p></div><span id="step-exempt" class="badge">Not checked</span></li>
+      <li><div><h3>2. Set the intended sell fees</h3><code>setSellFee(10, 390)</code><p>10 basis points for liquidity and 390 for the receiver; total 400 basis points (4%). Buy fee rates stay unchanged.</p></div><span id="step-fees" class="badge">Not checked</span></li>
+      <li><div><h3>3. Set the marketing receiver</h3><code>setMarketingWallet(fixedReceiver)</code><p>Uses the verified address above automatically, after exemption and sell fees are confirmed.</p></div><span id="step-receiver" class="badge">Not checked</span></li>
+    </ol>
+    <p id="actionLock" class="notice">Connect the current token owner wallet on Ethereum after verification succeeds.</p><button id="update" type="button" disabled aria-describedby="actionLock">Review next step</button>
+  </section>
+  <section id="review" class="review-panel" aria-labelledby="reviewHeading" hidden>
+    <h2 id="reviewHeading" tabindex="-1">Review one transaction</h2><p id="reviewAction"></p>
+    <dl class="review-details"><dt>Network</dt><dd>Ethereum mainnet · chain ID 1</dd><dt>From</dt><dd><code id="reviewFrom"></code></dd><dt>To: ZYPTO token</dt><dd><code id="reviewTo"></code></dd><dt>Exact function call</dt><dd><code id="reviewCall"></code></dd><dt>ETH sent</dt><dd>0 ETH</dd><dt>Gas limit</dt><dd id="reviewGas"></dd><dt>Gas pricing</dt><dd id="reviewPrice"></dd><dt>Maximum estimated cost</dt><dd id="reviewCost"></dd><dt>Buy fees preserved</dt><dd id="reviewBuy"></dd></dl>
+    <details><summary>Encoded calldata</summary><code id="reviewData" class="calldata"></code></details>
+    <p class="caption">Estimates expire after two minutes. The app rechecks owner, network, contract code, prerequisites, fees and ETH gas balance before requesting this call. Gas increases require a fresh review. Your wallet shows the final transaction for your confirmation.</p>
+    <div class="review-actions"><button id="confirm" type="button" disabled>Confirm in wallet</button><button id="cancel" type="button" class="secondary" disabled>Cancel review</button></div>
+  </section>
+  <p id="status" class="status" role="status" aria-live="polite">Checking Ethereum…</p><a id="txLink" class="address" target="_blank" rel="noopener noreferrer" hidden>View transaction</a>
+  <footer><span>Only the token owner can configure settings · Each transaction needs your wallet confirmation</span><a href="https://etherscan.io/address/0xC4C6B2320Fc2E77d55007dd22daE1f2D70826CE3#code" target="_blank" rel="noopener noreferrer">View receiver ↗</a></footer>
+</main><script type="module" src="/app.js?v=deployed-setup-1"></script>
+</body></html>

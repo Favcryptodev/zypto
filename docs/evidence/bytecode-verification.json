@@ -1,0 +1,36 @@
+{
+  "compiler": "0.8.24+commit.e11b9ed9.Emscripten.clang",
+  "deployedCompilerMarker": "64736f6c6343000818",
+  "codeHash": "0x1895e0a68d42bf76807dccc14eda5e13d04f47529aa2b622f7693274ee99ed44",
+  "deployedBytes": 15049,
+  "matches": [
+    {
+      "optimizer": true,
+      "evmVersion": "paris",
+      "bytes": 9617,
+      "exactMatch": false,
+      "executableMatch": false
+    },
+    {
+      "optimizer": true,
+      "evmVersion": "shanghai",
+      "bytes": 9416,
+      "exactMatch": false,
+      "executableMatch": false
+    },
+    {
+      "optimizer": false,
+      "evmVersion": "paris",
+      "bytes": 15339,
+      "exactMatch": false,
+      "executableMatch": false
+    },
+    {
+      "optimizer": false,
+      "evmVersion": "shanghai",
+      "bytes": 15049,
+      "exactMatch": false,
+      "executableMatch": true
+    }
+  ]
+}

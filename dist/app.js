@@ -1,112 +1,103 @@
-import {BrowserProvider, JsonRpcProvider, FetchRequest, Contract, ZeroAddress} from './ethers.js';
+import {BrowserProvider,JsonRpcProvider,FetchRequest,formatEther,formatUnits} from './ethers.js';
 import {createWalletController} from './wallet.js';
-import {getReceiverDeployment, denyTransactionAction, TRANSACTION_LOCK_MESSAGE} from './deployment.js';
-export const ADDRESS='0x7a65cb87f596caf31a4932f074c59c0592be77d7';
-export const ABI=['function owner() view returns(address)','function _marketingWallet() view returns(address)','function _sellFeeLiquidity() view returns(uint256)','function _sellFeeMarketing() view returns(uint256)','function _sellFeeTotal() view returns(uint256)','function _buyFeeLiquidity() view returns(uint256)','function _buyFeeMarketing() view returns(uint256)'];
+import {DEPLOYMENT as D} from './deployment.js';
+import {createSetupFlow,createEthereumAdapter,stepsFor} from './setup.js';
+
 const $=id=>document.getElementById(id);
-let wallet=null,provider=null,account=null,snapshot=null,refreshId=0;
-let connection={status:'idle',error:''};
-const rpcUrls=['https://ethereum-rpc.publicnode.com','https://eth.drpc.org'];
-const short=a=>a.slice(0,6)+'…'+a.slice(-4);
+const same=(a,b)=>a?.toLowerCase()===b?.toLowerCase();
 const pct=n=>Number(n)/100+'%';
-function say(message,error=false){$('status').textContent=message;$('status').classList.toggle('error',error)}
+const endpoints=['https://ethereum-rpc.publicnode.com','https://eth.drpc.org'];
+let publicIndex=0,revision=0,walletProvider=null,connection={status:'idle'},view={phase:'idle'},lastReview=null;
+function makePublic(index){const req=new FetchRequest(endpoints[index]);req.timeout=12000;return new JsonRpcProvider(req,1,{staticNetwork:true,batchMaxCount:1})}
+let publicProvider=makePublic(0);
+const getSession=()=>({revision,account:connection.status==='connected'?connection.account:null,wallet:connection.status==='connected'?connection.provider:null});
+const adapter=createEthereumAdapter({getSession,getProvider:()=>walletProvider||publicProvider});
+// Confirmation monitoring stays on Ethereum mainnet even if the wallet changes networks.
+adapter.receipt=hash=>publicProvider.waitForTransaction(hash,1,120000);
+adapter.checkReceipt=hash=>publicProvider.getTransactionReceipt(hash);
+adapter.transaction=hash=>publicProvider.getTransaction(hash);
+const flow=createSetupFlow(adapter,{onChange(state){view=state;if(state.review)lastReview=state.review;render()}});
+
 function render(){
-  const owner=!!(connection.status==='connected'&&snapshot&&account&&snapshot.owner.toLowerCase()===account.toLowerCase());
-  const deployment=getReceiverDeployment();
+  const s=view.snapshot;
+  const owner=!!(s?.verified&&connection.status==='connected'&&same(connection.account,s.owner));
+  const busy=['loading','preparing','wallet','pending'].includes(view.phase);
+  const uncertain=view.phase==='uncertain';
+  const steps=stepsFor(s),next=steps.find(step=>!step.done);
+  $('configuredReceiver').textContent=D.receiver;
+  $('configuredReceiver').href='https://etherscan.io/address/'+D.receiver+'#code';
+  $('fixedPayout').textContent=D.payout;
+  $('deploymentState').textContent=s?.verified?'Contract code and destinations verified':'Verification required';
+  $('owner').textContent=s?.owner||'Unavailable';
+  $('receiver').textContent=s?.receiver||'Unavailable';
+  $('liq').textContent=s?pct(s.liq):'—';$('mkt').textContent=s?pct(s.mkt):'—';$('total').textContent=s?pct(s.total):'—';
+  $('buy').textContent=s?pct(s.buyLiq)+' liquidity / '+pct(s.buyMkt)+' marketing (unchanged)':'Unavailable';
+  $('readState').textContent=s?'Ethereum mainnet · verified at block '+s.block.toLocaleString():busy?'Checking deployed code and token settings…':'Refresh to verify Ethereum contract state.';
+  for(const step of steps){
+    $('step-'+step.key).textContent=!s?'Not checked':step.done?'Already satisfied':next?.key===step.key?'Next step':'After earlier steps';
+  }
+  $('update').disabled=!owner||!s?.verified||busy||uncertain||view.phase==='review'||!next;
+  $('update').textContent=s&&!next?'Setup complete':'Review next step';
+  $('actionLock').textContent=uncertain?'Transaction outcome is uncertain. Check its status before any further setup.':!s?'Setup is locked until contract verification succeeds.':!owner?'Connect the current token owner wallet on Ethereum to configure these settings.':!next?'All three settings are already correct. No transaction is needed.':'Next: '+next.label+'. Values are prefilled; each step requires a separate wallet confirmation.';
+  $('refresh').disabled=busy;
+  $('refresh').textContent=uncertain?'Check transaction':'Refresh';
   const connecting=connection.status==='connecting';
-  $('configuredReceiver').textContent=deployment.label;
-  $('deploymentState').textContent='Awaiting verified deployment';
-  $('actionLock').textContent=TRANSACTION_LOCK_MESSAGE;
-  $('update').disabled=true;
-  $('update').setAttribute('aria-disabled','true');
-  $('connect').disabled=connecting;
-  $('connect').textContent=connecting?'Connecting…':connection.status==='wrong-network'?'Switch to Ethereum':account?'Reconnect wallet':'Connect wallet';
+  $('connect').disabled=connecting||['wallet','pending','preparing'].includes(view.phase);
+  $('connect').textContent=connecting?'Connecting…':connection.status==='wrong-network'?'Switch to Ethereum':connection.status==='connected'?'Reconnect wallet':'Connect wallet';
   $('connect').setAttribute('aria-busy',String(connecting));
-  $('disconnect').hidden=!account&&!connecting&&connection.status!=='wrong-network';
-  $('disconnect').disabled=false;
-  $('walletSelect').disabled=connecting||!!account||connection.status==='wrong-network';
-  $('findWallets').disabled=connecting;
-  $('refresh').disabled=false;
-  let text;
-  if(connection.error)text=connection.error;
-  else if(connecting)text='Open '+connection.walletName+' and approve account access. Connecting does not sign or send a transaction.';
-  else if(account)text=connection.walletName+' · '+short(account)+' · Ethereum mainnet. '+(snapshot?(owner?'Token owner verified. Transaction actions remain locked until receiver deployment is verified.':'Read-only: this account is not the token owner.'):'Reading token data. Transaction actions remain locked.');
-  else text='Choose an Ethereum wallet and connect for read-only access. Use a browser extension or your wallet’s in-app browser. QR pairing is not enabled.';
-  $('walletState').textContent=text;
+  $('disconnect').hidden=!connection.account&&!connecting&&connection.status!=='wrong-network';
+  $('walletSelect').disabled=connecting||!!connection.account||busy;
+  $('findWallets').disabled=connecting||busy;
+  $('walletState').textContent=connection.error||(connecting?'Open your wallet and approve account access. Connecting does not sign or send a transaction.':connection.status==='connected'?connection.walletName+' · '+connection.account+' · Ethereum mainnet. '+(owner?'Token owner verified.':'Read-only until current token ownership is verified.'):'Choose a browser wallet extension or open this page inside your wallet’s in-app browser. QR pairing is not enabled.');
   $('walletState').classList.toggle('error',connection.status==='error'||connection.status==='wrong-network');
-}
-async function read(p){
-  const network=await p.getNetwork();if(network.chainId!==1n)throw Error('Switch your wallet to Ethereum mainnet.');
-  const block=await p.getBlockNumber();const c=new Contract(ADDRESS,ABI,p);
-  const names=['owner','_marketingWallet','_sellFeeLiquidity','_sellFeeMarketing','_sellFeeTotal','_buyFeeLiquidity','_buyFeeMarketing'];
-  const v=await Promise.all(names.map(n=>c[n]({blockTag:block})));
-  return{owner:v[0],receiver:v[1],liq:v[2],mkt:v[3],total:v[4],buyLiq:v[5],buyMkt:v[6],block};
-}
-function readWithDeadline(p){
-  let timer;
-  return Promise.race([read(p),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Ethereum read timed out. Check your connection and choose Refresh.')),15000)})]).finally(()=>clearTimeout(timer));
+  $('status').textContent=view.message||'Checking Ethereum…';$('status').classList.toggle('error',!!view.error);
+  $('status').setAttribute('aria-busy',String(busy));
+  $('review').hidden=!lastReview;
+  if(lastReview){
+    const {step,session,quote,snapshot}=lastReview,tx=quote.tx;
+    $('reviewAction').textContent=step.label;
+    $('reviewFrom').textContent=session.account;
+    $('reviewTo').textContent=D.token;
+    $('reviewCall').textContent=step.fn+'('+step.args.map(String).join(', ')+')';
+    $('reviewData').textContent=tx.data;
+    $('reviewGas').textContent=String(tx.gasLimit)+' gas (20% estimate buffer)';
+    $('reviewPrice').textContent=tx.maxFeePerGas!=null?'Max '+formatUnits(tx.maxFeePerGas,'gwei')+' gwei/gas; priority '+formatUnits(tx.maxPriorityFeePerGas,'gwei')+' gwei':formatUnits(tx.gasPrice,'gwei')+' gwei/gas';
+    $('reviewCost').textContent=formatEther(quote.maxGasCost)+' ETH maximum network fee';
+    $('reviewBuy').textContent=pct(snapshot.buyLiq)+' liquidity / '+pct(snapshot.buyMkt)+' marketing; no buy-fee call is sent.';
+  }
+  $('confirm').disabled=view.phase!=='review';$('cancel').disabled=view.phase!=='review';
+  $('txLink').hidden=!view.hash;
+  if(view.hash){$('txLink').href='https://etherscan.io/tx/'+view.hash;$('txLink').textContent='View transaction '+view.hash}
 }
 async function refresh(){
-  const id=++refreshId;snapshot=null;render();
-  $('readState').textContent='Reading Ethereum. Previous values, if displayed, may be stale.';
-  try{
-    let s;
-    if(provider)s=await readWithDeadline(provider);
-    else{
-      for(const url of rpcUrls){
-        const req=new FetchRequest(url);req.timeout=10000;
-        const p=new JsonRpcProvider(req,1,{staticNetwork:true,batchMaxCount:1});
-        try{s=await readWithDeadline(p);break}catch{}finally{p.destroy()}
-      }
-      if(!s)throw Error('Public Ethereum reads are unavailable. Connect an Ethereum wallet or choose Refresh to retry.');
-    }
-    if(id!==refreshId)return;
-    snapshot=s;$('owner').textContent=s.owner;$('receiver').textContent=s.receiver;
-    $('liq').textContent=pct(s.liq);$('mkt').textContent=pct(s.mkt);$('total').textContent=pct(s.total);
-    $('buy').textContent=pct(s.buyLiq)+' liquidity / '+pct(s.buyMkt)+' marketing';
-    $('readState').textContent='Verified at Ethereum block '+s.block.toLocaleString();
-    if(s.owner===ZeroAddress)say('Ownership is renounced. This console remains read-only.',true);
-  }catch(e){
-    if(id!==refreshId)return;snapshot=null;
-    for(const name of ['owner','receiver','liq','mkt','total','buy'])$(name).textContent='Unavailable';
-    $('readState').textContent=e.shortMessage||e.message;
-  }finally{if(id===refreshId)render()}
+  await flow.refresh();
+  if(!walletProvider&&publicIndex===0&&flow.getState().phase==='error'){
+    publicProvider.destroy();publicProvider=makePublic(++publicIndex);await flow.refresh();
+  }
 }
-const controller=createWalletController({
+const wallets=createWalletController({
   window,
   onProviders(choices){
     const select=$('walletSelect'),selected=select.value;select.replaceChildren();
     if(!choices.length){const option=document.createElement('option');option.value='';option.textContent='No wallet detected';select.append(option)}
     for(const choice of choices){const option=document.createElement('option');option.value=choice.id;option.textContent=choice.name;select.append(option)}
-    if(choices.some(choice=>choice.id===selected))select.value=selected;
-    render();
+    if(choices.some(choice=>choice.id===selected))select.value=selected;render();
   },
   onState(next){
-    connection=next;refreshId++;
-    const previous=provider;wallet=next.provider;account=next.status==='connected'?next.account:null;
-    provider=account?new BrowserProvider(wallet):null;previous?.destroy();snapshot=null;render();
-    if(account){say('Wallet connected to Ethereum. Connecting did not sign or send a transaction.');refresh()}
-    else if(next.status==='error')say(next.error,true);
+    connection=next;revision++;
+    const previous=walletProvider;walletProvider=next.status==='connected'?new BrowserProvider(next.provider):null;
+    previous?.destroy();flow.invalidate();render();
+    if(!['wallet','pending','uncertain'].includes(view.phase))refresh();
   },
 });
-async function connect(){await controller.connect($('walletSelect').value)}
-export function execute(action='update'){
-  // Enforced even when invoked directly or when DOM disabled state is changed.
-  // No signer, write contract, signature, approval or process call is created.
-  const result=denyTransactionAction(action);
-  say(result.reason,true);
-  return result.allowed;
-}
-
-$('connect').addEventListener('click',connect);
-$('disconnect').addEventListener('click',()=>{
-  controller.disconnect('Disconnected from this page. You can also remove site permissions in your wallet.');
-  say('Wallet disconnected from this page.');refresh();
-});
-$('findWallets').addEventListener('click',()=>{
-  controller.discover();
-  say(controller.getProviders().length?'Choose your wallet, then connect.':'No Ethereum wallet detected. Open this page in your wallet’s in-app browser, or install a browser wallet extension.');
-});
+$('connect').addEventListener('click',()=>wallets.connect($('walletSelect').value));
+$('disconnect').addEventListener('click',()=>wallets.disconnect('Disconnected from this page. Wallet site permissions remain controlled by your wallet.'));
+$('findWallets').addEventListener('click',()=>wallets.discover());
 $('refresh').addEventListener('click',refresh);
-$('update').addEventListener('click',()=>execute('update'));
-controller.start();render();refresh();
+$('update').addEventListener('click',async()=>{
+  const next=stepsFor(view.snapshot).find(step=>!step.done);
+  if(next&&await flow.prepare(next.key))$('reviewHeading').focus();
+});
+$('confirm').addEventListener('click',()=>flow.confirm());
+$('cancel').addEventListener('click',()=>flow.cancel());
+wallets.start();render();refresh();

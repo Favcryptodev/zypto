@@ -1,0 +1,49 @@
+{
+  "testedAt": "2026-11-03T13:03:14.380Z",
+  "forkBlock": 26334448,
+  "receiver": "0xC4C6B2320Fc2E77d55007dd22daE1f2D70826CE3",
+  "exactDeployedRuntime": true,
+  "buyFeesZero": true,
+  "withoutExemption": {
+    "marketingPaidETH": "0.03",
+    "burnDeferredETH": "0.01",
+    "buybackETH": "0"
+  },
+  "withExemption": {
+    "buybackETH": "13750000000000000",
+    "tokensSentToDead": "17274854742859813471130"
+  },
+  "ownerCalls": [
+    "excludeFromFees(receiver,true)",
+    "setSellFee(10,390)",
+    "setMarketingWallet(receiver)"
+  ],
+  "applicationFlow": [
+    {
+      "key": "exempt",
+      "fn": "excludeFromFees",
+      "to": "0x7A65CB87F596Caf31a4932f074c59c0592bE77D7",
+      "value": "0",
+      "gasLimit": "57693",
+      "maximumNetworkFeeWei": "70332752944446"
+    },
+    {
+      "key": "fees",
+      "fn": "setSellFee",
+      "to": "0x7A65CB87F596Caf31a4932f074c59c0592bE77D7",
+      "value": "0",
+      "gasLimit": "43522",
+      "maximumNetworkFeeWei": "51871780132680"
+    },
+    {
+      "key": "receiver",
+      "fn": "setMarketingWallet",
+      "to": "0x7A65CB87F596Caf31a4932f074c59c0592bE77D7",
+      "value": "0",
+      "gasLimit": "34998",
+      "maximumNetworkFeeWei": "40875820025376"
+    }
+  ],
+  "buyFeesPreserved": true,
+  "scope": "Only local in-process Ganache transactions. The upstream mainnet adapter allows reads only."
+}

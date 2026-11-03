@@ -9,5 +9,6 @@ coverage/
 .cache/
 dist/ethers.js
 dist/ethers.LICENSE.txt
+dist/__qa-owner.html
 .openai/
 premium-audit.json
